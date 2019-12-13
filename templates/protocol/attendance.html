@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if team %}{{ team }}{% else %}Состав команды{% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="jumbotron mb-5">
+          <div class="container">
+            <h1 class="display-4">«Осьминог»</h1>
+            <p class="lead">Игры «Что? Где? Когда?» во Владивостоке</p>
+          </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+            <h3>{{ tournament }}</h3>
+            <h3>{{ team }}</h3>
+            <ul>
+            {% for player in players %}
+            <li>{{ player }}</li>
+            {% endfor %}
+            </ul>
+            </div>
+            <div>
+                <form action="" method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <input type="submit" />
+                </form>
+            </div>
+        </div>
+    </div>
+    {{ form.media }}
+{% endblock %}
+
+{% block script %}
+    <script>
+    </script>
+{% endblock %}

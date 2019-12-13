@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if team %}{{ team }}{% else %}Календарь{% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="jumbotron mb-5">
+          <div class="container">
+            <h1 class="display-4">«Осьминог»</h1>
+            <p class="lead">Игры «Что? Где? Когда?» во Владивостоке</p>
+          </div>
+        </div>
+        {% for event in events %}
+            {% ifchanged %}<div class="row pb-5 fancy"><div class="col-10 col-md-6 offset-md-3">
+                <h2>{{ event.datetime|date:"F" }}</h2></div></div>{% endifchanged %}
+        <div class="row pb-5">
+            <div class="col-md-3 col-sm-12 text-right">
+                <span class="badge badge-light p-2 mb-3 text-right">
+                    <h1>{{ event.datetime|date:"D d"|upper }}<br class="d-none d-md-block">
+                    {{ event.datetime|date:"H:i"|lower }}</h1>
+                </span>
+                <p><a href=""><i class="fas fa-map-marker"></i> {{ event.location.name }}</a></p>
+            </div>
+            <div class="col-md-6 col-sm-12">
+                <h6>{{ event.tournament.link|safe }} <i class="fas fa-question"></i> {{ event.tournament.questions_total }} вопросов</h6>
+                <p>{{ event.description }}</p>
+                <p><i class="fas fa-user-graduate"></i> Редактор{% if event.tournament.authors.all|length > 1 %}ы{% endif %}:
+                {% for author in event.tournament.authors.all %}
+                    {{ author.link|safe }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}</p>
+                <p>
+                    Взнос: <a href="" title="{{ event.fee_comment }}">{{ event.fee_main_rub|floatformat }}₽</a> с команды*
+                </p>
+                <button type="button" class="btn btn-outline-info btn-sm" data-toggle="collapse" data-target="#tournament-{{ event.tournament.id }}" aria-expanded="false" aria-controls="tournament-{{ event.tournament.id }}">
+                    * подробнее</button>
+                <p>
+                    <div class="collapse" id="tournament-{{ event.tournament.id }}">
+                        <div class="card card-body">
+                            <p>Стоимость игры состоит из взноса и платы за участие.</p>
+                            <h4>Взнос с человека</h4>
+                            <p>В зависимости от количества игроков, ₽:</p>
+                            {{ event.fees_hint|safe }}
+                            <p></p>
+                            {% if event.fee_comment %}<p>Льготная группа:<br><i>{{ event.fee_comment }}</i></p>{% endif %}
+                            <h4>Плата за участие</h4>
+                            <p>{{ event.fee_player|floatformat }}₽ или {{ event.fee_points|floatformat }} балла со взрослых игроков, 100₽ или 1 балл со студентов.</p>
+                            <p>Студентами считаются игроки, не достигшие 23 лет на 1&nbsp;сентября текущего учебного года.</p>
+                            <p>Школьники от платы за участие освобождены.</p>
+                        </div>
+                    </div>
+                </p>
+            </div>
+            <div class="col-md-3 col-sm-12">
+                {% if event.claim_set.all|length > 0 %}
+                    <h6>Заявки команд ({{ event.claim_set.all|length }}):</h6>
+                    {% for claim in event.claim_set.all %}
+                        {{ claim.link|safe }}
+                        {% if team.id == claim.team.idteam %}<i class="fas fa-check text-success"></i>{% endif %}<br>
+                    {% endfor %}
+                {% else %}
+                    <h6>Пока заявок нет</h6>
+                {% endif %}
+                <br>
+                {% load event_teams %}
+                {% with a=event.claim_set.all|team_exist:team %}
+                <button type="button" data-toggle="tooltip" data-placement="auto"
+                            class="btn btn-sm mb-1 claim-btn btn-{% if a %}danger{% else %}success{% endif %}"
+                            data-href="/api/{% if a %}remove{% else %}add{% endif %}-claim/{{ event.tournament.id }}/{{ team.id }}/"
+                            title="{% if a %}Удалить заявку команды{% else %}Добавить команду в заявку{% endif %}">
+                    <i class="fas fa-{% if a %}times{% else %}plus{% endif %}"></i>
+                    {% if a %}Удалить заявку{% else %}Добавить заявку{% endif %}</button>
+                {% if a %}<a class="btn btn-sm btn-primary" href="/состав/{{ event.tournament.id }}/{{ team.id }}/">Отправить состав</a>{% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script>
+        $('button.btn-primary').tooltip({ boundary: 'windows'});
+        $('button.btn-success').tooltip({ boundary: 'windows'});
+        $('button.btn-outline-info').popover({ container: 'body'});
+
+        $(".claim-btn").click(function (e) {
+            e.preventDefault();
+            var this_ = $(this);
+            var claimUrl = this_.attr("data-href");
+            if (claimUrl) {
+                $.ajax({
+                    url: claimUrl,
+                    method: "GET",
+                    data: {},
+                    success: function (data) {
+                        console.log(data);
+                        var newLikes;
+                        if (data.success) {
+                            location.reload()
+                        }
+                    }, error: function (error) {
+                        console.log(error);
+                        console.log("error")
+                    }
+                })
+            }
+        })
+    </script>
+{% endblock %}

@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Календарь
+{% endblock %}
+
+{% block content %}
+    {% verbatim %}
+    <div class="container">
+        <div class="jumbotron mb-5">
+            <div class="container">
+                <h1 class="display-4">«Осьминог»</h1>
+                <p class="lead">Игры «Что? Где? Когда?» во Владивостоке</p>
+            </div>
+        </div>
+        <div class="row">
+            <div id="wrapper" class="col-12">
+                <div id="app"></div>
+            </div>
+        </div>
+    </div>
+    <div id="event_list" class="container">
+        <div class="row">
+            <div class="col-12">
+                <input id="name" v-model.trim="name" ref="name" type="text" class="form-control mb-4"
+                       placeholder="Временное название или новая команда"/>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-3">
+                Время и место
+            </div>
+            <div class="col-9">
+                Турнир
+            </div>
+        </div>
+        <div class="row mb-4" v-for="event in events" :key="event.id">
+            <div class="col-3">
+                {{ getEventDateTime(event) }}<br/>
+                {{ event.location.short_name }}
+            </div>
+            <div class="col-9">
+                <h6><a :href="getRatingUrl('tournament', event.tournament.idtournament)">
+                    {{ event.name }}</a> {{ event.tournament.questions_total }} вопросов</h6>
+                <p>{{ event.description }}</p>
+                <p v-if="event.difficulty">Сложность: {{ event.difficulty }}</p>
+                <p>Взнос: {{ event.fee_main_rub }} ₽</p>
+                <h6 v-if="event.claims">Заявок:&nbsp;{{ event.claims.length }}</h6>
+                <h6 v-else>Заявок:&nbsp;{{ event.claims.length }}</h6>
+                <ul class="list-group" :id="'event-' + event.id">
+                    <li v-for="claim in event.claims" class="list-group-item" :key="claim.id">
+                        <template v-if="!claim.team">
+                            {{ claim.name }}
+                        </template>
+                        <template v-else>
+                            <a :href="'http://rating.chgk.info/team/' + claim.team.idteam">
+                                <template v-if="claim.name">
+                                    {{ claim.name }}
+                                </template>
+                                <template v-else>
+                                    {{ claim.team.__str__ }}
+                                </template>
+                            </a>
+                        </template>
+                        <button v-if="team && claim.team && team.idteam == claim.team.idteam"
+                                class="btn btn-sm ml-2 mb-1 btn-danger" @click="deleteClaim(claim.id)">Отменить
+                        </button>
+                        <button v-else-if="!team && name && claim.name && name == claim.name"
+                                class="btn btn-sm ml-2 mb-1 btn-danger" @click="deleteClaim(claim.id)">Отменить
+                        </button>
+                    </li>
+                </ul>
+                <button type="button" class="btn btn-sm mt-2 claim-btn btn-success" v-if="team && isButton(event)"
+                        @click="addClaim(team.idteam, name, event.id)">Отправить заявку
+                </button>
+                <button type="button" class="btn btn-sm mt-2 claim-btn btn-success" v-else-if="!team && isButton(event)"
+                        @click="addClaim(null, name, event.id)">Отправить заявку
+                </button>
+            </div>
+        </div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">Время</th>
+                <th scope="col">Место</th>
+                <th scope="col">Турнир</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="event in events" :key="event.id">
+                <td>{{ getEventDateTime(event) }}</td>
+                <td>{{ event.location.short_name }}</td>
+                <td>
+                    <h6><a :href="getRatingUrl('tournament', event.tournament.idtournament)">
+                        {{ event.name }}</a> {{ event.tournament.questions_total }} вопросов</h6>
+                    <p>{{ event.description }}</p>
+                    <p v-if="event.difficulty">Сложность: {{ event.difficulty }}</p>
+                    <p>Взнос: {{ event.fee_main_rub }} ₽</p>
+                    <h6 v-if="event.claims">Заявок:&nbsp;{{ event.claims.length }}</h6>
+                    <h6 v-else>Заявок:&nbsp;{{ event.claims.length }}</h6>
+                    <ul class="list-group" :id="'event-' + event.id">
+                        <li v-for="claim in event.claims" class="list-group-item" :key="claim.id">
+                            <template v-if="!claim.team">
+                                {{ claim.name }}
+                            </template>
+                            <template v-else>
+                                <a :href="'http://rating.chgk.info/team/' + claim.team.idteam">
+                                    <template v-if="claim.name">
+                                        {{ claim.name }}
+                                    </template>
+                                    <template v-else>
+                                        {{ claim.team.__str__ }}
+                                    </template>
+                                </a>
+                            </template>
+                            <button v-if="team && claim.team && team.idteam == claim.team.idteam"
+                                    class="btn btn-sm ml-2 mb-1 btn-danger" @click="deleteClaim(claim.id)">Отменить
+                                заявку
+                            </button>
+                            <button v-else-if="!team && name && claim.name && name == claim.name"
+                                    class="btn btn-sm ml-2 mb-1 btn-danger" @click="deleteClaim(claim.id)">Отменить
+                                заявку
+                            </button>
+                        </li>
+                    </ul>
+                    <button type="button" class="btn btn-sm mt-2 claim-btn btn-success" v-if="team && isButton(event)"
+                            @click="addClaim(team.idteam, name, event.id)">Добавить заявку
+                    </button>
+                    <button type="button" class="btn btn-sm mt-2 claim-btn btn-success"
+                            v-else-if="!team && isButton(event)" @click="addClaim(null, name, event.id)">Добавить заявку
+                    </button>
+
+                    <!--                    <h1 v-if="event.claims.team.includes(team)">It works!</h1>
+                                        <button type="button" class="btn btn-sm mb-1 claim-btn btn-success" @click="addClaim(none, team)" v-if-else="team">добавить</button> -->
+
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endverbatim %}
+{% endblock %}
+
+{% block script %}
+    {% load static %}
+    <script src="{% static 'js/vue.js' %}"></script>
+    <script src="{% static 'js/vue-resource.js' %}"></script>
+    <script src="https://unpkg.com/vue-bootstrap-typeahead"></script>
+    <script type="text/javascript">
+        Vue.http.headers.common['X-CSRFToken'] = "{{ csrf_token }}";
+    </script>
+    {% verbatim %}
+    <script type="text/javascript">
+        const template = `
+        <div>
+        <h3 v-if="team">{{ team.__str__ }}</h3>
+        <vue-bootstrap-typeahead class="mb-1" v-model="query_team" :data="teams" :serializer="result => result.__str__"
+            @hit="team = $event" placeholder="Введите название команды" append="Искать"></div>
+        `;
+
+        let data = {
+            query_team: '',
+            team: null,
+            name: '',
+            teams: [],
+            events: [],
+            loading: true,
+        };
+
+        let event_list = new Vue({
+            data: data,
+            mounted: function () {
+                this.getEvents();
+            },
+            watch: {
+                name: function () {
+
+                }
+            },
+            methods: {
+                getEvents: function () {
+                    this.loading = true;
+                    this.$http.get('/api/event/')
+                        .then((response) => {
+                            this.events = response.data;
+                            this.loading = false;
+                        })
+                        .catch((err) => {
+                            this.loading = false;
+                            console.log(err);
+                        })
+                },
+                getRatingUrl: function (object, id) {
+                    return `https://rating.chgk.info/${object}/${id}/`
+                },
+                getEventDateTime: function (event) {
+                    let datetime = new Date(event.datetime);
+                    let year = datetime.getFullYear();
+                    let month = datetime.getMonth() + 1;
+                    let dt = datetime.getDate();
+                    let hours = datetime.getHours();
+                    let minutes = datetime.getMinutes();
+                    let day = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"][datetime.getDay()];
+
+                    if (dt < 10) {
+                        dt = '0' + dt;
+                    }
+                    if (month < 10) {
+                        month = '0' + month;
+                    }
+                    if (minutes < 10) {
+                        minutes = '0' + minutes;
+                    }
+                    return day + ", " + dt + "/" + month + " " + hours + ":" + minutes
+                },
+                isButton: function (event) {
+                    if (!this.team && !this.name) {
+                        return false
+                    }
+                    for (let claim of event.claims) {
+                        if (this.team && claim.team) {
+                            if (claim.team.idteam === this.team.idteam) {
+                                return false
+                            }
+                        } else if (this.name) {
+                            if (claim.name === this.name) {
+                                return false
+                            }
+                        }
+                    }
+                    return true
+                },
+                addClaim: function (idteam, name, event) {
+                    this.loading = true;
+                    let claim = {"team": idteam, "name": name, "event": event};
+                    this.$http.post('/api/claim/', claim)
+                        .then((response) => {
+                            this.loading = true;
+                            this.getEvents();
+                        })
+                        .catch((err) => {
+                            this.loading = true;
+                            console.log(err);
+                        })
+                },
+                deleteClaim: function (id) {
+                    this.loading = true;
+                    this.$http.delete(`/api/claim/${id}/`)
+                        .then((response) => {
+                            this.loading = false;
+                            this.getEvents();
+                        })
+                        .catch((err) => {
+                            this.loading = false;
+                            console.log(err);
+                        })
+                },
+            },
+            filters: {
+                format_claim(claim) {
+                    if (!claim.team) {
+                        return claim.name
+                    } else {
+                        return `<a href="http://rating.chgk.info/team/${claim.team.idteam}">${claim.name || claim.team.__str__}</a>`
+                    }
+                }
+            },
+        }).$mount('#event_list');
+
+        let team_pickup = new Vue({
+            template,
+            components: {
+                VueBootstrapTypeahead
+            },
+            data: data,
+            watch: {
+                query_team(newQuery) {
+                    this.$http.get(`/api/team/?q=${newQuery}`)
+                        .then((response) => {
+                            this.teams = response.data.results
+                        })
+                        .catch((err) => {
+                            this.loading = false;
+                            console.log(err);
+                        })
+                }
+            },
+            filters: {
+                stringify(value) {
+                    return JSON.stringify(value, null, 2)
+                }
+            },
+        }).$mount('#app');
+    </script>
+    {% endverbatim %}
+{% endblock %}
